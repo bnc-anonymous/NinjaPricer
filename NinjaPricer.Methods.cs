@@ -72,6 +72,8 @@ public partial class NinjaPricer
 
     private CustomItem _itemShownWhileAltHeld;
 
+    private CustomItem _lastHoveredItem;
+
     private void GetHoveredItem()
     {
         try
@@ -83,6 +85,12 @@ public partial class NinjaPricer
             if (altHeld && _itemShownWhileAltHeld != null)
             {
                 HoveredItem = _itemShownWhileAltHeld;
+            }
+            else if (uiHover.Address == 0 && IsCursorOver(_lastHoveredItem))
+            {
+                // UIHoverElement reads address 0 for single frames every few seconds while the cursor rests on an item
+                // and its description stays shown; taking that as nothing hovered drew every price box for that frame.
+                HoveredItem = _lastHoveredItem;
             }
             else if (uiHover.Address != 0 && uiHover.AsObject<HoverItemIcon>().ToolTipType != ToolTipType.ItemInChat)
             {
@@ -107,12 +115,22 @@ public partial class NinjaPricer
             }
 
             _itemShownWhileAltHeld = altHeld ? HoveredItem : null;
+            _lastHoveredItem = HoveredItem;
             HoveredItemTooltipRect = HoveredItem?.Element?.Tooltip?.GetClientRectCache;
         }
         catch (Exception ex)
         {
             DebugWindow.LogError($"Failed to get the hovered item: {ex}");
         }
+    }
+
+    private bool IsCursorOver(CustomItem item)
+    {
+        if (item?.Element is not { Address: not 0 } element)
+            return false;
+
+        var ingameState = GameController.IngameState;
+        return element.GetClientRectCache.Contains(ingameState.MousePosX, ingameState.MousePosY);
     }
 
     private void GetValue(IEnumerable<CustomItem> items)
