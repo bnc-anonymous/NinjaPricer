@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 
 namespace NinjaPricer;
 
@@ -69,12 +70,21 @@ public partial class NinjaPricer
         return ShardMapping.TryGetValue(shardBaseName ?? "<unknown>", out shardParent);
     }
 
+    private CustomItem _itemShownWhileAltHeld;
+
     private void GetHoveredItem()
     {
         try
         {
-            var uiHover = GameController.Game.IngameState.UIHover;
-            if (uiHover.Address != 0 && uiHover.AsObject<HoverItemIcon>().ToolTipType != ToolTipType.ItemInChat)
+            // While Alt is held the game keeps the advanced description of the item it showed open, wherever the cursor
+            // goes and whatever it moves over, so that item stays the hovered one until Alt is let go.
+            var altHeld = Input.IsKeyDown(Keys.Menu);
+            var uiHover = GameController.Game.IngameState.UIHoverElement;
+            if (altHeld && _itemShownWhileAltHeld != null)
+            {
+                HoveredItem = _itemShownWhileAltHeld;
+            }
+            else if (uiHover.Address != 0 && uiHover.AsObject<HoverItemIcon>().ToolTipType != ToolTipType.ItemInChat)
             {
                 var inventoryItemIcon = uiHover.AsObject<NormalInventoryItem>();
                 var tooltip = inventoryItemIcon.Tooltip;
@@ -96,6 +106,7 @@ public partial class NinjaPricer
                 }
             }
 
+            _itemShownWhileAltHeld = altHeld ? HoveredItem : null;
             HoveredItemTooltipRect = HoveredItem?.Element?.Tooltip?.GetClientRectCache;
         }
         catch (Exception ex)
